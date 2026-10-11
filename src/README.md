@@ -1,3 +1,11 @@
+```
+ __  __ _       _   ____          _ _     
+|  \/  (_)_ __ (_) |  _ \ ___  __| (_)___ 
+| |\/| | | '_ \| | | |_) / _ \/ _` | / __|
+| |  | | | | | | | |  _ <  __/ (_| | \__ \
+|_|  |_|_|_| |_|_| |_| \_\___|\__,_|_|___/
+```
+
 # Mini Redis
 
 A Redis-compatible key-value store built from scratch in Rust, as a project to learn systems programming — networking, concurrency, and Rust's ownership model.
