@@ -20,6 +20,7 @@ Currently supported commands:
 - `GET key` — retrieve a value by key
 - `DEL key` — delete a key
 - Handles multiple clients concurrently (Tokio async runtime)
+- Key expiry (`SET key value EX 10`)
 
 Data is stored in memory using a `HashMap` and is lost when the server restarts.
 
@@ -56,7 +57,6 @@ $-1
 ## What's next
 
 This project is being built incrementally. Planned additions:
-- Key expiry (`SET key value EX 10`)
 - Proper RESP protocol parsing (currently uses simplified plain-text parsing)
 - Persistence to disk
 - Tests and benchmarks
