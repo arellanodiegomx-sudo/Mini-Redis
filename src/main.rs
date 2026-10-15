@@ -3,13 +3,19 @@ use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::sync::Mutex;
 use std::collections::HashMap;
 use std::sync::Arc;
+use std::time::{Duration, Instant};
+
+struct Entry {
+    value: String,
+    expires_at: Option<Instant>,
+}
 
 #[tokio::main]
 async fn main() {
     let listener = TcpListener::bind("127.0.0.1:6379").await.unwrap();
     println!("Listening on port 6379");
 
-    let store = Arc::new(Mutex::new(HashMap::new()));
+    let store: Arc<Mutex<HashMap<String, Entry>>> = Arc::new(Mutex::new(HashMap::new()));
 
     loop {
         let (mut stream, _) = listener.accept().await.unwrap();
@@ -34,8 +40,23 @@ async fn main() {
                 Some(&"SET") => {
                     match (parts.get(1), parts.get(2)) {
                         (Some(key), Some(value)) => {
+                            let expires_at = match (parts.get(3), parts.get(4)) {
+                                (Some(&"EX"), Some(seconds_str)) => {
+                                    match seconds_str.parse::<u64>() {
+                                        Ok(seconds) => Some(Instant::now() + Duration::from_secs(seconds)),
+                                        Err(_) => None,
+                                    }
+                                }
+                                _ => None,
+                            };
+
+                            let entry = Entry {
+                                value: value.to_string(),
+                                expires_at,
+                            };
+
                             let mut store = store.lock().await;
-                            store.insert(key.to_string(), value.to_string());
+                            store.insert(key.to_string(), entry);
                             "+OK\r\n".to_string()
                         }
                         _ => "-ERR wrong number of arguments for SET\r\n".to_string(),
@@ -45,9 +66,21 @@ async fn main() {
                 Some(&"GET") => {
                     match parts.get(1) {
                         Some(key) => {
-                            let store = store.lock().await;
+                            let mut store = store.lock().await;
                             match store.get(*key) {
-                                Some(value) => format!("+{}\r\n", value),
+                                Some(entry) => {
+                                    let expired = match entry.expires_at {
+                                        Some(expiry) => Instant::now() > expiry,
+                                        None => false,
+                                    };
+
+                                    if expired {
+                                        store.remove(*key);
+                                        "$-1\r\n".to_string()
+                                    } else {
+                                        format!("+{}\r\n", entry.value)
+                                    }
+                                }
                                 None => "$-1\r\n".to_string(),
                             }
                         }
